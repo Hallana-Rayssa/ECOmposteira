@@ -1,0 +1,231 @@
+#include <wire.h>
+#include <MutichannelGasSensor.h> //seed stuios lib ME3 o2
+#include <Adafruit_CCS811.h> //Adafruit lib CO2
+#include <HX711.h> //PESO
+#include <SparkFunHTU21D.h> //Humidade 
+#include <SoftwareSerial.h>
+#include <Arduino.h>
+#include <io.h>
+#include <SPI.h>
+
+
+Adafruit_CCS811 ccs; // Metodo pra iniciar o sensor de CO
+HTU21D myHumidity; //Metodo pra Iniciar o sensor de Humidade
+SoftwareSerial mySerial(1, 0); // RX, TX
+
+
+
+int getO2(){
+
+    c = gas.measure_o2();
+    Serial.print("O2: ");
+    if (c >= 0) {
+        Serial.print(c);
+    } else {
+        Serial.print("invalid");
+    }
+    Serial.println(" ppm");
+
+    return c;
+} 
+
+float getCO2(){
+    
+    if(!ccs.begin()){
+        Return erno 1; //diretiva do GCC AVR para parar o código 
+    //Calibraçao
+    while(!ccs.available());
+        float temp = ccs.calculateTemperature();
+    ccs.setTempOffset(temp – 25.0);
+
+    //aquisicao
+    if(ccs.available()){
+        float temp = ccs.calculateTemperature();
+    if(!ccs.readData()){
+        Serial.print(“CO2: “);
+        Serial.print(ccs.geteCO2());
+        return ccs.getCO2;
+    }
+    else
+        return erno 1; 
+}
+
+float getPeso(){
+
+    const int LOADCELL_DOUT_PIN = 6; //PD6
+    const int LOADCELL_SCK_PIN = 7;  //PD7
+
+    scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);// incicando a escala
+    scale.read()
+    scale.read_average(20)//media de 20 medicoes
+    scale.get_value(5) //media de 5 medicoes
+    scale.get_units(5), 1 //preparando a o sensor com o peso 
+    scale.set_scale(2280.f);
+    scale.tare();
+
+    float peso= scale.get_units(), 1
+
+    scale.power_down();			        // put the ADC in sleep mode
+    delay(5000);
+    scale.power_up();
+
+    return peso;
+}
+
+float getTemp(){
+
+    float offset = 6.4762;//offset da dcocumentacao do sensor
+    float sensitivity=1.9971; //offset do sensor
+
+    int AnalogValue = analogRead(6); //Read the input on PC6
+
+    float DigitalValue = (AnalogValue * 5) / (1023); //mul by 5 to give the range 0-100 degree
+
+    float temp = (AnalogValue - offset)/sensitivity;
+    Serial.println(temp); //print temp
+    return temp;
+}  
+
+
+float getPh(){
+    const int analogInPin = 1; //PC1 
+    int sensorValue = 0; 
+    unsigned long int avgValue; 
+    float b;
+    int buf[10],temp;
+
+    
+    for(int i=0;i<10;i++){ 
+    buf[i]=analogRead(analogInPin);
+    delay(10);
+    }
+    //alocando os buffers
+    for(int i=0;i<9;i++){
+        for(int j=i+1;j<10;j++){
+            if(buf[i]>buf[j]){
+                temp=buf[i];
+                buf[i]=buf[j];
+                buf[j]=temp;
+            }
+        }
+    }
+    avgValue=0;
+    for(int i=2;i<8;i++)
+    avgValue+=buf[i];
+    float pHVol=(float)avgValue*5.0/1024/6;
+    float phValue = -5.70 * pHVol + 21.34;
+    Serial.print("sensor = ");
+    Serial.println(phValue);
+    delay (20);
+    
+    return phValue;
+}
+
+float getNH3(){
+    int vnox_value = 0;
+    int vred_value = 0;
+
+    digitalWrite(PRE_PIN, 1);
+    delay(PRE_HEAT_SECONDS * 1000);
+    digitalWrite(PRE_PIN, 0);
+    Serial.println("Done");
+
+    vnox_value = analogRead(VNOX_PIN);
+    vred_value = analogRead(VRED_PIN);
+    Serial.print("Vnox: ");
+    Serial.print(vnox_value, DEC);
+    Serial.print(" Vred: ");
+    Serial.println(vred_value, DEC);
+    return vnox_value;
+}
+
+float getUmidade(){
+    float humd = myHumidity.readHumidity();
+    return humd;
+} 
+
+void giroVentilador(float temperatura, float oc2){
+
+    if (temperatura>70.0 || o2<35.0 ){
+        for(int i=0; i<1023; i++){
+            analogWrite(11,i);  
+            delay (20);    
+        }
+    }
+}
+
+void giroExaustor(float nh3, float co2){
+
+    if (NH3>=1 || o2<=14.0 ){
+        for(int i=0; i<1023; i++){
+            analogWrite(10,i); //PB2  
+            delay (20);    
+        }
+    }
+}
+
+void aquecerResistor(float temperatura){
+
+    if ((temperatura>27.0 && temperatura<45.0) && ph<=8 && co2<5){//Mesófila
+        for(int i=0; i<1023; i++){
+            analogWrite(9,i); //PB3  
+        }
+    }else if(temperatura && ph>8.1){ //termófila
+        for(int i=0; i<1023; i++){
+            analogWrite(9,i); //PB3  
+            for(int j=0; j>=60; j++)
+                delay(100000000)//1min delay
+        }   
+    }else{
+         for(int i=0; i<1023; i++){//criófila
+            analogWrite(9,i); //PB3  
+    }
+}
+
+
+
+void setup(){
+    Serial.begin(9600);
+
+    for(int i =0; i<14; i++){
+        pinMode(i, OUTPUT);   
+    }
+
+    gas.begin(0x04);//Endereço I2C do ME3 o2, que é o mesmo do CCS
+    gas.powerOn();
+    myHumidity.begin();
+}
+
+void loop{
+
+    //mutiplexaçao dos sensores 00, get sensor o2
+    digitalWrite(7, LOW);
+    digitalWrite(6, LOW);
+    delay(20);
+    int o2=getO2();
+    //multiplexaçao dos sensores 01, get sensor co2 
+    digitalWrite(7, HIGH);
+    digitalWrite(6, LOW);
+    delay(20); 
+    float co2= getCO2();
+    float peso=getPeso(); 
+    float temp= getTemp();
+    float ph =getPH();
+    float nh3= getNH3();
+    float umidade= getUmidade();
+
+    //rotina dos motores e resistencias
+
+    giroMotor(temp, o2);
+    giroExaustor(temp, o2);
+    aquecimentoResistor(temp);
+
+    //enviando para a ESP32
+
+    Serial.write(o2);
+    Serial.write(co2);
+    Serial.write(peso);
+    Serial.write(temp);
+    Serial.write(ph);
+    Serial.write(nh3);
+    Serial.write(umidade);
