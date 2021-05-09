@@ -1,0 +1,121 @@
+/*Rotaçao do motor:
+
+  O motor será rotacionado a partir dos Pulsos das portas de acordo com a frequencia de chaveamento.
+
+  O delay de chaveamento é igual a 60*15/1780
+
+*/
+
+//Bibliotecas:
+#include <SoftwareSerial.h>
+#include <Arduino.h>
+//#include <io.h>
+
+//Define os portas:
+#define controle1 12 //PB4
+#define controle2 11 //PB3
+#define controle3 10 //PB2
+#define controle4 9 // PB1
+#define controle5 8 // PB0
+#define controle6 7 //PD5
+
+void setup() { // função de inicialização
+
+  Serial.begin(9600); // Inicializa a comunicação serial com Monitor Serial
+
+  for (int i = 7; i < 13; i++) { //Declaração das portas
+    pinMode(i, OUTPUT);
+  }
+  Serial.println("Inicializacao concluida!");
+}
+
+//Delay será 1980
+
+void loop() { //Função principal
+
+  if (Serial.available()) { // Verificar se há caracteres disponíveis na comunicação serial
+    char caractere = Serial.read(); // Armazena caractere lido
+    
+    //Imprime no monitor serial caracter recebido
+    Serial.print("Caracter recebido:");
+    Serial.println(caractere);
+    
+    if ( isDigit(caractere) ) {  // Verificar se o caractere ASCII é um dígito entre 0 e 9
+      
+      switch (caractere) {
+        //rotinas necessária para o correto chaveamento do motor
+        case '1': //Caso caracter recebido for 1, rotaciona o motor
+        
+          //Aciona Transistor Q1 e Q4
+          digitalWrite(controle1, HIGH);
+          digitalWrite(controle4, HIGH);
+          delay(1980);
+          Serial.println("Aciona Transistor Q1 e Q4");
+
+          //Aciona Transistor Q1 e Q2
+          digitalWrite(controle1, LOW);
+          digitalWrite(controle4, LOW);
+          digitalWrite(controle1, HIGH);
+          digitalWrite(controle6, HIGH);
+          delay(1980);
+          Serial.println("Aciona Transistor Q1 e Q2");
+
+          //Aciona Transistor Q3 e Q2
+          digitalWrite(controle1, LOW);
+          digitalWrite(controle6, LOW);
+          digitalWrite(controle3, HIGH);
+          digitalWrite(controle6, HIGH);
+          delay(1980);
+          Serial.println("Aciona Transistor Q3 e Q2");
+
+          //Aciona Transistor Q3 e Q6
+          digitalWrite(controle3, LOW);
+          digitalWrite(controle6, LOW);
+          digitalWrite(controle3, HIGH);
+          digitalWrite(controle2, HIGH);
+          delay(1980);
+          Serial.println("Aciona Transistor Q3 e Q6");
+
+          //Aciona Transistor Q5 e Q6
+          digitalWrite(controle3, LOW);
+          digitalWrite(controle2, LOW);
+          digitalWrite(controle5, HIGH);
+          digitalWrite(controle2, HIGH);
+          delay(1980);
+          Serial.println("Aciona Transistor Q5 e Q6");
+
+          //Aciona Transistor Q5 e Q4
+          digitalWrite(controle5, LOW);
+          digitalWrite(controle2, LOW);
+          digitalWrite(controle5, HIGH);
+          digitalWrite(controle4, HIGH);
+          delay(1980);
+          Serial.println("Aciona Transistor Q5 e Q4");
+
+          //Rotação Finalizada
+          digitalWrite(controle5, LOW);
+          digitalWrite(controle4, LOW);
+          Serial.println("Rotacao Finalizada!");
+          break;
+
+        case '2': //Caso caracter recebido for 2, para o motor.
+          //Parada do motor
+          digitalWrite(controle1, LOW);
+          digitalWrite(controle2, LOW);
+          digitalWrite(controle3, LOW);
+          digitalWrite(controle4, LOW);
+          digitalWrite(controle5, LOW);
+          digitalWrite(controle6, LOW);
+          Serial.println("Parada do motor");
+          break;
+
+        default:
+          Serial.println("Opcao invalida");
+          break;
+      }
+
+    }else{
+      Serial.println("Caracter invalido!");
+    }
+  }
+}
